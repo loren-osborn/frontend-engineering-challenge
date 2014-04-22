@@ -1,0 +1,3 @@
+
+_citizen_net_frontend_challenge:
+    resource: "@LinuxDrCitizenNetCnfcBundle/Resources/config/routing.yml"

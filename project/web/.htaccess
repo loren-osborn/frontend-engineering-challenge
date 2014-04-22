@@ -1,5 +1,5 @@
-# DirectoryIndex app.php
-DirectoryIndex app_dev.php
+DirectoryIndex app.php
+# DirectoryIndex app_dev.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
@@ -16,8 +16,8 @@ DirectoryIndex app_dev.php
     # - use Apache >= 2.3.9 and replace all L flags by END flags and remove the
     #   following RewriteCond (best solution)
     RewriteCond %{ENV:REDIRECT_STATUS} ^$
-    RewriteRule ^app_dev\.php(/(.*)|$) %{CONTEXT_PREFIX}/$2 [R=301,L]
-    # RewriteRule ^app\.php(/(.*)|$) %{CONTEXT_PREFIX}/$2 [R=301,L]
+    # RewriteRule ^app_dev\.php(/(.*)|$) %{CONTEXT_PREFIX}/$2 [R=301,L]
+    RewriteRule ^app\.php(/(.*)|$) %{CONTEXT_PREFIX}/$2 [R=301,L]
 
     # If the requested filename exists, simply serve it.
     # We only want to let Apache serve files and not directories.
@@ -26,8 +26,8 @@ DirectoryIndex app_dev.php
 
 
     RewriteCond %{REQUEST_FILENAME} -f
-    RewriteRule ^(.*)$ app_dev.php [QSA,L]
-    # RewriteRule ^(.*)$ app.php [QSA,L]
+    # RewriteRule ^(.*)$ app_dev.php [QSA,L]
+    RewriteRule ^(.*)$ app.php [QSA,L]
 
     # The following rewrites all other queries to the front controller. The
     # condition ensures that if you are using Apache aliases to do mass virtual
@@ -36,8 +36,8 @@ DirectoryIndex app_dev.php
     # a safe, one-size fits all solution.
     RewriteCond %{REQUEST_URI}::$1 ^(/.+)(.+)::\2$
     RewriteRule ^(.*) - [E=BASE:%1]
-    RewriteRule .? %{ENV:BASE}app_dev.php [L]
-    # RewriteRule .? %{ENV:BASE}app.php [L]
+    # RewriteRule .? %{ENV:BASE}app_dev.php [L]
+    RewriteRule .? %{ENV:BASE}app.php [L]
 </IfModule>
 
 <IfModule !mod_rewrite.c>
@@ -45,8 +45,8 @@ DirectoryIndex app_dev.php
         # When mod_rewrite is not available, we instruct a temporary redirect of
         # the startpage to the front controller explicitly so that the website
         # and the generated links can still be used.
-        RedirectMatch 302 ^/$ /app_dev.php/
-        # RedirectMatch 302 ^/$ /app.php/
+        # RedirectMatch 302 ^/$ /app_dev.php/
+        RedirectMatch 302 ^/$ /app.php/
         # RedirectTemp cannot be used instead
     </IfModule>
 </IfModule>

@@ -15,7 +15,7 @@ package { ['python-software-properties']:
   require => Exec['apt-get update'],
 }
  
-$sysPackages = [ 'build-essential', 'git', 'curl', 'bc']
+$sysPackages = [ 'build-essential', 'git', 'curl', 'bc', 'acl']
 package { $sysPackages:
   ensure => "installed",
   require => Exec['apt-get update'],
@@ -42,7 +42,7 @@ class { 'php':
 	# config_file => '/etc/php5/apache2/conf.d/php.ini'
 }
  
-$phpModules = [ 'imagick', 'xdebug', 'curl', 'mysql', 'cli', 'intl', 'mcrypt', 'memcache']
+$phpModules = [ 'imagick', 'xdebug', 'curl', 'mysql', 'cli', 'intl', 'mcrypt', 'memcache', 'sqlite']
  
 php::module { $phpModules: }
  
@@ -88,7 +88,10 @@ class composer {
     }
 }
  
-class { 'composer': }
+class { 'composer': } -> file { '/usr/local/bin/phpunit':
+   ensure => 'link',
+   target => '/vagrant/project/vendor/phpunit/phpunit/phpunit',
+}
 
 file {'/var/vagrant_local':
 	ensure => directory,
@@ -106,25 +109,48 @@ file {'/var/vagrant_local':
 	group   => 'vagrant',
 	mode    => '0644',
 }
+
 file {'/var/vagrant_local/project/app/cache':
 	ensure => directory,
-	owner   => 'vagrant',
+	owner   => 'www-data',
 	group   => 'www-data',
-	mode    => '0777',
+	mode    => '6777',
 	require => File['/var/vagrant_local/project/app'],
 } -> file { '/vagrant/project/app/cache':
    ensure => 'link',
    target => '/var/vagrant_local/project/app/cache',
+} -> exec { 'Set ACL for /var/vagrant_local/project/app':
+	command => '/usr/bin/setfacl -d -R -m group:www-data:rwx,u::rwx,g::rwx,o::r /var/vagrant_local/project/app',
+	require => Mount['root filesystem'],
 }
+
 file {'/var/vagrant_local/project/app/logs':
 	ensure => directory,
-	owner   => 'vagrant',
+	owner   => 'www-data',
 	group   => 'www-data',
-	mode    => '0777',
+	mode    => '6777',
 	require => File['/var/vagrant_local/project/app'],
 } -> file { '/vagrant/project/app/logs':
    ensure => 'link',
    target => '/var/vagrant_local/project/app/logs',
+} -> exec { 'Set ACL for /vagrant/project/app/logs':
+	command => '/usr/bin/setfacl -d -R -m group:www-data:rwx,u::rwx,g::rwx,o::r /var/vagrant_local/project/app/logs',
+	require => Mount['root filesystem'],
+}
+
+mount { 'root filesystem':
+	name => '/',
+	ensure => 'mounted',
+	atboot => 'true',
+	device => 'LABEL=cloudimg-rootfs',
+	fstype => 'ext4',
+	options => 'defaults,acl',
+	require => Package['acl'],
+}
+
+user { 'vagrant':
+	ensure => present,
+	groups => ['vagrant', 'www-data'],
 }
 
 

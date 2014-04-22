@@ -1,0 +1,12 @@
+_welcome:
+    pattern:  /
+    defaults: { _controller: LinuxDrCitizenNetCnfcBundle:Welcome:index }
+
+# _demo_secured:
+#     resource: "@LinuxDrCitizenNetCnfcBundle/Controller/SecuredController.php"
+#     type:     annotation
+
+# _demo:
+#     resource: "@LinuxDrCitizenNetCnfcBundle/Controller/DemoController.php"
+#     type:     annotation
+#     prefix:   /demo

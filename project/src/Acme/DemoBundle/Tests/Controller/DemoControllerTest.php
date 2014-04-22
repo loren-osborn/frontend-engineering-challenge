@@ -3,10 +3,10 @@
 namespace Acme\DemoBundle\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-
+ /* 
 class DemoControllerTest extends WebTestCase
 {
-    public function testIndex()
+   public function testIndex()
     {
         $client = static::createClient();
 
@@ -41,5 +41,5 @@ class DemoControllerTest extends WebTestCase
 
         // check that the page is the right one
         $this->assertCount(1, $crawler->filter('h1.title:contains("secured for Admins only!")'));
-    }
-}
+    } 
+}*/

@@ -25,6 +25,7 @@
         "cbsi/doctrine2-nestedset": "dev-master",
         "doctrine/migrations": "dev-master",
         "doctrine/doctrine-migrations-bundle": "dev-master",
+        "doctrine/doctrine-fixtures-bundle": "2.2.*",
         "innova/angular-js-bundle": "dev-master",
         "fsc/hateoas-bundle": "0.5.*@dev"
     },
