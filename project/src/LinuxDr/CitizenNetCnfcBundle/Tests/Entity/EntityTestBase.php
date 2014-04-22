@@ -5,15 +5,24 @@ use PHPUnit_Framework_TestCase;
 use LinuxDr\CitizenNetCnfcBundle\Entity\PollableSource;
 use Doctrine\ORM\Tools\SchemaTool;
 use DirectoryIterator;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use ReflectionClass;
+use Doctrine\ORM\Tools\ToolsException as OrmToolsException;
 
 abstract class EntityTestBase extends WebTestCase
 {
     /**
-     * @var \Doctrine\ORM\EntityManager
+     * @var \Doctrine\ORM\EntityManager $em
      */
     private $em;
+    
+    public static function getBootedKernel()
+    {
+    	static::$kernel = static::createKernel();
+		static::$kernel->boot();
+    	return static::$kernel;
+    }
     
     private function getAllPhpClassesWithin($path, $namespacePrefix) {
 		$it = new DirectoryIterator($path);
@@ -51,9 +60,19 @@ abstract class EntityTestBase extends WebTestCase
         return $metas;
     }
     
+    public function createSchemaFromEntityClassFiles()
+    {
+		$tool = new SchemaTool($this->em);
+		$entityMetas = $this->getClassMetas(
+			$_SERVER['KERNEL_DIR'] . '../src/LinuxDr/CitizenNetCnfcBundle/Entity',
+			'LinuxDr\\CitizenNetCnfcBundle\\Entity\\'
+		);
+		$tool->createSchema($entityMetas);
+    }
+    
     private function dropSchema()
     {
-    	$params = static::$kernel->getContainer()->get('doctrine')
+    	$params = self::getBootedKernel()->getContainer()->get('doctrine')
     		->getConnection()->getParams();
     	if (file_exists($params['path'])) {
     		unlink($params['path']);
@@ -62,15 +81,9 @@ abstract class EntityTestBase extends WebTestCase
     
     public function setUp()
     {
-        static::$kernel = static::createKernel();
-        static::$kernel->boot();
-        $this->em = static::$kernel->getContainer()->get('doctrine')->getManager();
-        $this->dropSchema();
-        $tool = new SchemaTool($this->em);
-        $tool->createSchema($this->getClassMetas(
-        	$_SERVER['KERNEL_DIR'] . '../src/LinuxDr/CitizenNetCnfcBundle/Entity',
-        	'LinuxDr\\CitizenNetCnfcBundle\\Entity\\'
-        ));
+        $this->em = self::getBootedKernel()->getContainer()->get('doctrine')->getManager();
+    	$this->dropSchema();
+        $this->createSchemaFromEntityClassFiles();
         
         parent::setUp();
     }
@@ -81,17 +94,9 @@ abstract class EntityTestBase extends WebTestCase
         parent::tearDown();
     }
     
-    public function testSimpleProperties($testValues = null)
+    protected function populateEntity($entity, $testValues)
     {
-        $entity = $this->getTestEntity();
-        if (is_null($testValues)) {
-        	$testValues = $this->getSimpleTestValues();
-        }
-        $dql = 'SELECT e FROM ' . get_class($entity) . ' e';
     	$classRef = new ReflectionClass(get_class($entity));
-        
-        $origEntities = $this->em->createQuery($dql)->execute();
-        $this->assertEquals(0, count($origEntities));
         
         foreach ($testValues as $propName => $val) {
         	$this->assertTrue($classRef->hasProperty($propName), "Property $propName must be defined on " . get_class($entity));
@@ -101,13 +106,39 @@ abstract class EntityTestBase extends WebTestCase
         $this->em->persist($entity);
         $this->em->flush();
         
-        $newEntities = $this->em->createQuery($dql)->execute();
-        $this->assertEquals(1, count($newEntities));
+    }
+    
+    protected function getPopulatedEntities($entity, $dqlSuffix = '')
+    {
+        $dql = 'SELECT e FROM ' . get_class($entity) . ' e' . $dqlSuffix;
+    	$classRef = new ReflectionClass(get_class($entity));
         
+        return $this->em->createQuery($dql)->execute();
+    }
+    
+    protected function validateEntity($entity, $testValues)
+    {
         foreach ($testValues as $propName => $val) {
-        	$this->assertEquals($val, $newEntities[0]->$propName);
+        	$this->assertEquals($val, $entity->$propName);
         }
         
+    }
+    
+    public function testSimpleProperties($testValues = null)
+    {
+        $entity = $this->getTestEntity();
+        if (is_null($testValues)) {
+        	$testValues = $this->getSimpleTestValues();
+        }
+        $dql = 'SELECT e FROM ' . get_class($entity) . ' e';
+        
+        $origEntities = $this->em->createQuery($dql)->execute();
+        $this->assertEquals(0, count($origEntities));
+        
+        $this->populateEntity($entity, $testValues);
+        $newEntities = $this->getPopulatedEntities($entity);
+        $this->assertEquals(1, count($newEntities));
+        $this->validateEntity( $newEntities[0], $testValues);
     }
     
     abstract protected function getSimpleTestValues();
