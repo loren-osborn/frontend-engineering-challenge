@@ -15,7 +15,7 @@ package { ['python-software-properties']:
   require => Exec['apt-get update'],
 }
  
-$sysPackages = [ 'build-essential', 'git', 'curl', 'bc', 'acl']
+$sysPackages = [ 'build-essential', 'git', 'curl', 'bc', 'acl', 'sqlite3']
 package { $sysPackages:
   ensure => "installed",
   require => Exec['apt-get update'],

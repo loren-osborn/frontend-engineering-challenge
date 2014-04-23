@@ -35,9 +35,15 @@ class PollableSourceResponse extends EntityBase
 	 * @ORM\Column(type="text", nullable=false)
 	 */
 	private $rawResponse;
+
+    /**
+	 * @var LinuxDr\CitizenNetCnfcBundle\Entity\PollableSource $source	
+     * @ORM\ManyToOne(targetEntity="LinuxDr\CitizenNetCnfcBundle\Entity\PollableSource", inversedBy="responses")
+     */
+    private $source;
 	
     public function __construct()
     {
-    	parent::__construct(array('timestamp', 'httpStatus', 'rawResponse'));
+    	parent::__construct(array('timestamp', 'httpStatus', 'rawResponse', 'source'));
     }
 }

@@ -15,7 +15,7 @@ abstract class EntityTestBase extends WebTestCase
     /**
      * @var \Doctrine\ORM\EntityManager $em
      */
-    private $em;
+    protected $em;
     
     public static function getBootedKernel()
     {
@@ -108,16 +108,19 @@ abstract class EntityTestBase extends WebTestCase
         
     }
     
-    protected function getPopulatedEntities($entity, $dqlSuffix = '')
+    protected function getPopulatedEntities($entityClass, $dqlSuffix = '')
     {
-        $dql = 'SELECT e FROM ' . get_class($entity) . ' e' . $dqlSuffix;
-    	$classRef = new ReflectionClass(get_class($entity));
-        
+        $dql = "SELECT e FROM {$entityClass} e" . $dqlSuffix;
         return $this->em->createQuery($dql)->execute();
     }
     
     protected function validateEntity($entity, $testValues)
     {
+		if (!is_object($entity)) {
+			var_dump($entity);
+			die;
+			$this->fail('how did this happen?');
+		}
         foreach ($testValues as $propName => $val) {
         	$this->assertEquals($val, $entity->$propName);
         }
@@ -136,7 +139,7 @@ abstract class EntityTestBase extends WebTestCase
         $this->assertEquals(0, count($origEntities));
         
         $this->populateEntity($entity, $testValues);
-        $newEntities = $this->getPopulatedEntities($entity);
+        $newEntities = $this->getPopulatedEntities(get_class($entity));
         $this->assertEquals(1, count($newEntities));
         $this->validateEntity( $newEntities[0], $testValues);
     }
