@@ -37,10 +37,17 @@ class PollableSource extends EntityBase
 	private $active;
 	
 	/**
-	 * @var DateTime $preferedAccessTime	
-	 * @ORM\Column(type="datetimetz", nullable=true)
+	 * @var integer $responseTimeToLive	
+	 * @ORM\Column(type="integer", nullable=false)
 	 */
-	private $preferedAccessTime;
+	private $responseTimeToLive = 86400;
+	
+	/**
+	 * @var DateTime $preferedGmtOffsetAccessTime	
+	 * @ORM\Column(type="integer", nullable=false)
+	 * 57600 = midnight @ GMT-8 hours
+	 */
+	private $preferedGmtOffsetAccessTime = 57600;
 	
 	/**
 	 * @var array() $responses
@@ -55,7 +62,8 @@ class PollableSource extends EntityBase
     		'sourceName',
     		'url',
     		'active',
-    		'preferedAccessTime',
+    		'responseTimeToLive',
+    		'preferedGmtOffsetAccessTime',
     		'responses' => array(
         		self::ARRAY_OF_ENTITIES,
         		'reference' => 'source'
@@ -63,9 +71,9 @@ class PollableSource extends EntityBase
     	));
     }
     
-    public function getCurrentResponse($em)
+    public function getCurrentResponse($entMgr)
     {
-        $query = $em->createQuery(
+        $query = $entMgr->createQuery(
         	"SELECT " .
         		"r " .
         	"FROM " .
@@ -83,5 +91,18 @@ class PollableSource extends EntityBase
         	return null;
         }
         return $responses[0];
+    }
+    
+    public static function getSourcesDueForRefresh($entMgr, $nowTime)
+    {
+        return $entMgr->createQuery(
+        	"SELECT " .
+        		"s " .
+        	"FROM " .
+        		"LinuxDr\\CitizenNetCnfcBundle\\Entity\\PollableSource s " .
+        		"LEFT JOIN s.responses r " .
+        	"WHERE " .
+        		"r IS NULL"
+        )->execute();
     }
 }

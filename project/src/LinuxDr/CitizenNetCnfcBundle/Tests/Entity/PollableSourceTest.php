@@ -15,8 +15,8 @@ class PollableSourceTest extends EntityTestBase
     		'sourceName' => "Fred's Data Source",
     		'url' => "http://fred.com/rest/penguins",
     		'active' => true,
-    		'preferedAccessTime' =>
-    			new DateTime('Jan 1, 1970 08:05:41 PM', new DateTimeZone('America/Anchorage'))
+    		'responseTimeToLive' => 24*3600,
+    		'preferedGmtOffsetAccessTime' => 18341 /* 05:05:41 GMT */
     	);
     }
     
@@ -25,37 +25,42 @@ class PollableSourceTest extends EntityTestBase
     	return new PollableSource();
     }
     
-    public function testMostRecentResponse()
+    public function setupSampleData($nowTime = null, $sourceTimeOffset = 'P1W', $ttl = 86400)
     {
     	$responsesEntity = new PollableSourceResponse();
+    	$easternTime = new DateTimeZone('America/New_York');
     	$responsesData = array(
     		array(
 				'timestamp' => 
-					new DateTime('Mar 4, 2005 06:07:08 PM', new DateTimeZone('America/New_York')),
+					new DateTime('Mar 4, 2005 06:07:08 PM', $easternTime),
 				'httpStatus' => 200,
 				'rawResponse' => 'Stale Data'
 			),
     		array(
 				'timestamp' => 
-					new DateTime('Mar 5, 2005 06:07:08 PM', new DateTimeZone('America/New_York')),
+					new DateTime('Mar 5, 2005 06:07:08 PM', $easternTime),
 				'httpStatus' => 503,
 				'rawResponse' => 'Stale Error'
 			),
     		array(
 				'timestamp' => 
-					new DateTime('Mar 5, 2005 06:09:08 PM', new DateTimeZone('America/New_York')),
+					new DateTime('Mar 5, 2005 06:09:08 PM', $easternTime),
 				'httpStatus' => 200,
 				'rawResponse' => 'Current Data'
 			),
     		array(
 				'timestamp' => 
-					new DateTime('Mar 6, 2005 06:07:08 PM', new DateTimeZone('America/New_York')),
+					new DateTime('Mar 6, 2005 06:07:08 PM', $easternTime),
 				'httpStatus' => 503,
 				'rawResponse' => 'New Error'
 			)
 		); 
+		$filteredResponseData = array();
 		foreach ($responsesData as $eachData) {
-			$this->populateEntity(new PollableSourceResponse(), $eachData);
+			if (is_null($nowTime) || ($nowTime->getTimestamp() > $eachData['timestamp']->getTimestamp()) ) {
+				$this->populateEntity(new PollableSourceResponse(), $eachData);
+				$filteredResponseData[] = $eachData;
+			}
 		}
 		$allResponses = $this->getPopulatedEntities('LinuxDr\\CitizenNetCnfcBundle\\Entity\\PollableSourceResponse');
 		$sourceObj = new PollableSource();
@@ -65,8 +70,7 @@ class PollableSourceTest extends EntityTestBase
 				'sourceName' => "Fred's Data Source",
 				'url' => "http://fred.com/rest/penguins",
 				'active' => true,
-				'preferedAccessTime' =>
-					new DateTime('Jan 1, 1970 08:05:41 PM', new DateTimeZone('America/Anchorage'))
+				'preferedGmtOffsetAccessTime' => 18341 /* 05:05:41 GMT */
 			)
 		);
 		$sourceObj->responses = $allResponses;
@@ -77,14 +81,16 @@ class PollableSourceTest extends EntityTestBase
 				$eachData['timestamp']->format('c'),
 				$eachData['timestamp']->getTimezone()
 			);
-			$laterTime->add(new DateInterval('P1W'));
-			$newData = array(
-				'timestamp' => $laterTime,
-				'httpStatus' => $eachData['httpStatus'],
-				'rawResponse' => 'Other ' . $eachData['rawResponse']
-			);
-			$otherResponseDate[] = $newData;
-			$this->populateEntity(new PollableSourceResponse(), $newData);
+			$laterTime->add(new DateInterval($sourceTimeOffset));
+			if (is_null($nowTime) || ($nowTime->getTimestamp() > $laterTime->getTimestamp()) ) {
+				$newData = array(
+					'timestamp' => $laterTime,
+					'httpStatus' => $eachData['httpStatus'],
+					'rawResponse' => 'Other ' . $eachData['rawResponse']
+				);
+				$otherResponseDate[] = $newData;
+				$this->populateEntity(new PollableSourceResponse(), $newData);
+			}
 		}
 		$otherResponses = $this->getPopulatedEntities('LinuxDr\\CitizenNetCnfcBundle\\Entity\\PollableSourceResponse', " WHERE e.rawResponse LIKE 'Other%'");
     	$otherSourceObj = new PollableSource();
@@ -94,8 +100,7 @@ class PollableSourceTest extends EntityTestBase
 				'sourceName' => "George's Data Source",
 				'url' => "http://george.com/rest/llamas",
 				'active' => true,
-				'preferedAccessTime' =>
-					new DateTime('Jan 1, 1970 07:03:41 PM', new DateTimeZone('America/Anchorage'))
+				'preferedGmtOffsetAccessTime' => 14621 /* 04:03:41 GMT */
 			)
 		);
 		$otherSourceObj->responses = $otherResponses;
@@ -108,14 +113,55 @@ class PollableSourceTest extends EntityTestBase
         	$this->em->persist($response);
         }
         $this->em->flush();
-		
+        
+        return array(
+        	'responsesData' => $filteredResponseData,
+        	'otherResponseDate' => $otherResponseDate);
+    }
+    
+    public function testMostRecentResponse()
+    {
+		$dataSet = $this->setupSampleData();
 		$allSources = $this->getPopulatedEntities('LinuxDr\\CitizenNetCnfcBundle\\Entity\\PollableSource');
 		$this->assertEquals(2, count($allSources));
         $this->assertNotEquals($allSources[0]->sourceName, $allSources[1]->sourceName);
 		$this->assertEquals("Fred's Data Source", $allSources[0]->sourceName);
-		$this->validateEntity($allSources[0]->getCurrentResponse($this->em), $responsesData[2]);
+		$this->validateEntity($allSources[0]->getCurrentResponse($this->em), $dataSet['responsesData'][2]);
 		$this->assertEquals("George's Data Source", $allSources[1]->sourceName);
-		$this->validateEntity($allSources[1]->getCurrentResponse($this->em), $otherResponseDate[2]);
+		$this->validateEntity($allSources[1]->getCurrentResponse($this->em), $dataSet['otherResponseDate'][2]);
+    }
+    
+    public function getSourcesDue()
+    {
+		return array(
+			array('Mar 4, 2005 06:07:00 PM', 86400, array('Fred', 'George')),
+			array('Mar 4, 2005 06:07:10 PM', 86400, array('George')),
+			array('Mar 4, 2005 06:12:10 PM', 86400, array()),
+			array('Mar 4, 2005 06:03:25 AM', 122669, array()),
+			array('Mar 4, 2005 06:03:55 AM', 122669, array('George')),
+			array('Mar 4, 2005 06:03:25 PM', 122689, array('Fred')),
+			array('Mar 4, 2005 06:03:55 PM', 122689, array('Fred', 'George'))
+		);
+    }
+    
+    /**
+      * @dataProvider getSourcesDue
+      */
+    public function testSourcesDueForUpdate($nowTime, $ttl, $expected)
+    {
+    	$nowDateTime = new DateTime($nowTime, new DateTimeZone('America/New_York'));
+		$this->setupSampleData($nowDateTime, 'PT5M', $ttl);
+		$results = PollableSource::getSourcesDueForRefresh($this->em, $nowDateTime);
+		$this->assertEquals(count($expected), count($results));
+		foreach ($expected as $sourceName) {
+			$found = false;
+			foreach ($results as $source) {
+				if ($source->sourceName === "{$sourceName}'s Data Source") {
+					$found = true;
+				}
+			}
+			$this->assertTrue($found, "{$sourceName}'s Data Source not found");
+		}
     }
 
 }
