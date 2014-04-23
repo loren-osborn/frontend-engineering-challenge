@@ -31,3 +31,30 @@ Here's what your web-based application must do:
 1. http://rack1.citizennet.com/interviewtest/api?file=posts.json&access_token=AAAAAL2uajO8BAPcqOwZB6
 1. http://rack1.citizennet.com/interviewtest/api?file=likes.json&access_token=AAAAAL2uajO8BAPcqOwZB6
 
+## Developer notes:
+
+### Environment setup:
+1. Download and install the latest version of Vagrant on your system ( http://www.vagrantup.com )
+1. Download and install the latest version of VirtualBox on your system ( https://www.virtualbox.org )
+1. Git clone this project on your system
+1. On a shell or command console:
+    - change to the project directory (not the subdirectory named `project`)
+    - run `git submodule init` followed by `git submodule update` to git-clone the required puppet modules
+    - run `vagrant up`
+        * This will download and boot a complete Ubuntu 14.04 virtual machine and install all required packages via puppet, apt-get and composer, and forward http://localhost:8088 to port 80 on the virtual machine. The first time executing this can take 30 to 45 minutes on a reasonably fast connection, but the Ubuntu image is cached, so a complete box rebuild after a `vagrant destroy` should take less than 10 minutes.
+    - On the VM, type `cd /vagrant ; phpunit` to run all the project unit tests
+        * To close the ssh shell type `exit` or press control+D at the top-most bash prompt.
+1. To shutdown the virtual machine to be used again later, type `vagrant halt` otherwise type `vagrant destroy` to shutdown the VM and delete it from your system.
+
+### Project Layout:
++ The virtual machine configuration is contained in `Vagrantfile` and the `puppet` subdirectory.
++ The web application is built on Symfony and Doctrine and lives in the `project` subdirectory.
+    - The document root is `project/web` so no unintended files are reachable via the web server.
+    - The application configuration lives in `project/app`.
+    - All the custom code for this project lives in `project/src/LinuxDr/CitizenNetCnfcBundle`.
+
+### Project Status:
++ As stated earlier, all of the code I've written thus far is server side model code that lives in `project/src/LinuxDr/CitizenNetCnfcBundle/Entity` with unit tests in `project/src/LinuxDr/CitizenNetCnfcBundle/Tests/Entity`.
++ While I am embarrassed at my current progress, I'm happy with the work I did on generic model tests in ...`Tests/Entity/EntityTestBase.php`.
++ I am glad to complete this exercise if you still see value in my efforts.
+
